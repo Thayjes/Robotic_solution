@@ -10,7 +10,7 @@ from robot_sensor_interfaces.srv import ArmJointState
 class ArmSensorService(Node):
     def __init__(self) -> None:
         super().__init__('arm_sensor_service')
-        self.srv = self.create_service(ArmJointState, 'arm_jointstate',
+        self.srv = self.create_service(ArmJointState, 'get_sensor_data',
                                        self.sensor_callback)
         # Create a TCP/IP socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -18,7 +18,13 @@ class ArmSensorService(Node):
         # Connect the socket to the port where the server is listening
         server_address = ('127.0.0.3', 10000)
         print(f'connecting to {server_address[0]} port {server_address[1]}')
-        self.sock.connect(server_address)
+        while True:
+            try:
+                self.sock.connect(server_address)
+                break
+            except ConnectionRefusedError as e:
+                print(f'Waiting for connection: {e}')
+                pass
 
     def sensor_callback(self, request, response):
         num_samples = request.num_samples
