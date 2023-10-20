@@ -1,0 +1,9 @@
+robot_sensor/.mypy_cache
+robot_sensor/.pytest_cache
+robot_sensor/robot_sensor/.mypy_cache
+robot_sensor/robot_sensor/__pycache__
+build
+install
+log
+.mypy_cache
+.pytest_cache
