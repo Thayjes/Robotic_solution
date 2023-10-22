@@ -11,11 +11,13 @@ class CustomSensorService(Node):
     def __init__(self) -> None:
         super().__init__("custom_sensor_service")
         self.srv = self.create_service(ArmJointState, "get_sensor_data", self.sensor_callback)
+        self.DOF = 3
         # Create a TCP/IP socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # Connect the socket to the port where the server is listening
-        server_address = ("127.0.0.1", 10000)
+        # We connect the custom service to the first sensor
+        server_address = ("127.0.0.3", 10000)
         print(f"connecting to {server_address[0]} port {server_address[1]}")
         while True:
             try:

@@ -2,18 +2,12 @@
 """
 
 #!/usr/bin/env python3
-from array import array
-from logging import exception
 import socket
 import random
-from sqlite3 import connect
-import sys
-from tokenize import Double
 import numpy as np
-from threading import Thread, Timer
+from threading import Thread
 import time
 import rclpy
-from rclpy.executors import MultiThreadedExecutor
 from robot_sensor_interfaces.srv import ArmJointState
 
 
@@ -54,7 +48,7 @@ class Sensor(Thread):
 
     def sensor_callback(self, request, response):
         # Read the latest available sensor data from the thread
-        data = self.latest_sensor_data
+        data = np.frombuffer(self.latest_sensor_data)
         response.joint_state.data = [float(elem) for elem in data]
         return response
 
@@ -99,14 +93,16 @@ class Sensor(Thread):
                     # Recive the request for the number of samples
                     sample_length = self.recive(500)
 
+                    # Lets assume we have access to the latest data before
+                    # the time taken to collect samples
+                    self.latest_sensor_data = np.random.rand(self.DOF, int(sample_length))
+
                     # Let's pretend we are really collecting samples
                     time.sleep(
                         int(sample_length) / self.sampling_rate
                         + self.overhead_delay
                         + random.randint(0, 100) / 100000
                     )
-
-                    self.latest_sensor_data = np.random.rand(self.DOF, int(sample_length))
 
                     # Send the samples to the client
                     self.send(self.latest_sensor_data)
@@ -119,22 +115,22 @@ class Sensor(Thread):
 def main(args=None):
     # Launch the first sensor for the custom arm service
     sensor1 = Sensor(
-        "127.0.0.3", 10000, 100, 0.001, False
+        "127.0.0.3", 10000, 100, 0.001, True
     )  # Define a sensor with 100Hz sampling rate and 1ms delay
     t1 = Thread(target=sensor1.run)
     t1.daemon = True
 
-    # Launch the second sensor for the server node
-    sensor2 = Sensor(
-        "127.0.0.1", 10000, 100, 0.003, True
-    )  # Define a sensor with 100Hz sampling rate and 3ms delay
-    t2 = Thread(target=sensor2.run)
-    t2.daemon = True
+    # Launch the second sensor if we want to separate the sensor feeds
+    # sensor2 = Sensor(
+    #     "127.0.0.1", 10000, 100, 0.003, True
+    # )  # Define a sensor with 100Hz sampling rate and 3ms delay
+    # t2 = Thread(target=sensor2.run)
+    # t2.daemon = True
 
     t1.start()
-    t2.start()
+    # t2.start()
 
-    rclpy.spin(sensor2.server_node)
+    rclpy.spin(sensor1.server_node)  # change to sensor2.server_node if we use the second sensor
 
     while True:
         pass

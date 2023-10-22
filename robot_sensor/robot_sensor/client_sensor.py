@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
-from std_msgs.msg import Float64MultiArray
+from std_msgs.msg import Float64MultiArray, MultiArrayDimension
 from rclpy.qos import QoSReliabilityPolicy
 from rclpy.qos import QoSProfile
 
@@ -45,15 +45,36 @@ class SensorClient(Node):
             timer_period, self.pub_callback, callback_group=timer1_cb_group
         )
 
+        self.DOF = 3
+
+    def format_msg_data(self, msg, num_samples):
+        # This is almost always zero there is no empty padding at the start of your data
+        msg.layout.data_offset = 0
+        # create two dimensions in the dim array
+        msg.layout.dim = [MultiArrayDimension(), MultiArrayDimension()]
+        # dim[0] is the vertical dimension of your matrix (degrees of freedom)
+        msg.layout.dim[0].label = "DOF"
+        msg.layout.dim[0].size = self.DOF
+        msg.layout.dim[0].stride = int(self.DOF * num_samples)
+        # dim[1] is the horizontal dimension of your matrix (number of samples)
+        msg.layout.dim[1].label = "samples"
+        msg.layout.dim[1].size = num_samples
+        msg.layout.dim[1].stride = num_samples
+        return msg
+
     def pub_callback(self):
         msg = Float64MultiArray()
         req = ArmJointState.Request()
-        req.num_samples = 1
+        req.num_samples = 10
+        # Call the custom service sensor first
         result_discrete = self.cli.call(req)
         msg.data = result_discrete.joint_state.data
+        msg = self.format_msg_data(msg=msg, num_samples=req.num_samples)
         self.sensor_pub_discrete.publish(msg)
+        # Then call the service with latest sensor feed
         result_continuous = self.cli_continuous.call(req)
         msg.data = result_continuous.joint_state.data
+        msg = self.format_msg_data(msg=msg, num_samples=1)
         self.sensor_pub_continuous.publish(msg)
 
 
