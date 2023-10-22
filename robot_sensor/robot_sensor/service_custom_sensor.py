@@ -7,9 +7,9 @@ from rclpy.node import Node
 from robot_sensor_interfaces.srv import ArmJointState
 
 
-class ArmSensorService(Node):
+class CustomSensorService(Node):
     def __init__(self) -> None:
-        super().__init__("arm_sensor_service")
+        super().__init__("custom_sensor_service")
         self.srv = self.create_service(ArmJointState, "get_sensor_data", self.sensor_callback)
         # Create a TCP/IP socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -39,7 +39,7 @@ class ArmSensorService(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    sensor_service = ArmSensorService()
+    sensor_service = CustomSensorService()
     rclpy.spin(sensor_service)
     rclpy.shutdown()
 

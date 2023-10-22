@@ -40,7 +40,7 @@ class Sensor(Thread):
         self.sampling_rate = 0
         self.sensor_running = False
         self.connected = False
-        self.DOF = 6
+        self.DOF = 3
         self.sampling_rate = sampling_rate
 
         self.latest_sensor_data = np.zeros(self.DOF)
@@ -133,9 +133,8 @@ def main(args=None):
 
     t1.start()
     t2.start()
-    executor = MultiThreadedExecutor()
-    executor.add_node(sensor2.server_node)
-    executor.spin()
+
+    rclpy.spin(sensor2.server_node)
 
     while True:
         pass
