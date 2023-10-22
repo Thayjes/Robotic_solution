@@ -7,14 +7,13 @@ import random
 import numpy as np
 from threading import Thread
 import time
+from rclpy.node import Node
 import rclpy
-from robot_sensor_interfaces.srv import ArmJointState
+from robot_sensor_interfaces.srv import SensorData
 
 
 class Sensor(Thread):
-    def __init__(
-        self, address: str, port: int, sampling_rate: int, _delay: float, init_server: bool
-    ) -> None:
+    def __init__(self, address: str, port: int, sampling_rate: int, _delay: float) -> None:
         # Create a TCP/IP socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -36,21 +35,6 @@ class Sensor(Thread):
         self.connected = False
         self.DOF = 3
         self.sampling_rate = sampling_rate
-
-        self.latest_sensor_data = np.zeros(self.DOF)
-
-        if init_server:
-            rclpy.init()
-            self.server_node = rclpy.create_node(node_name="sensor_server")
-            self.srv = self.server_node.create_service(
-                ArmJointState, "sensor_data_continuous", self.sensor_callback
-            )
-
-    def sensor_callback(self, request, response):
-        # Read the latest available sensor data from the thread
-        data = np.frombuffer(self.latest_sensor_data)
-        response.joint_state.data = [float(elem) for elem in data]
-        return response
 
     def connect(self) -> bool:
         # Wait for a connection
@@ -112,28 +96,60 @@ class Sensor(Thread):
                 self.connection.close()
 
 
+class SensorServer(Node):
+    def __init__(self) -> None:
+        super().__init__("sensor_server")
+        self.srv = self.create_service(SensorData, "sensor_data_continuous", self.service_cb)
+        self.DOF = 3
+        self.num_samples = 10
+        # Create a TCP/IP socket
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        # Connect the socket to the port where the server is listening
+        # We connect the second service to the second sensor
+        server_address = ("127.0.0.1", 10000)
+        print(f"connecting to {server_address[0]} port {server_address[1]}")
+        self.sock.connect(server_address)
+
+        timer_freq = 100  # Hz
+        timer_period = 1 / timer_freq  # seconds
+        self.pub = self.create_timer(timer_period, self.sensor_callback)
+        self.data = np.zeros(self.DOF)
+
+    def service_cb(self, request, response):
+        response.joint_state.data = [float(elem) for elem in self.data]
+        self.get_logger().info("Incoming request sensor server node")
+        return response
+
+    def sensor_callback(self):
+        num_samples = self.num_samples
+        message_string = str(num_samples)
+        message = message_string.encode()
+        self.sock.sendall(message)
+        byte_data = self.sock.recv(10000)
+        self.data = np.frombuffer(byte_data)
+
+
 def main(args=None):
-    # Launch the first sensor for the custom arm service
+    # Launch the first 3DOF sensor for the custom arm service
     sensor1 = Sensor(
-        "127.0.0.3", 10000, 100, 0.001, True
-    )  # Define a sensor with 100Hz sampling rate and 1ms delay
+        "127.0.0.3", 10000, 2000, 0.001
+    )  # Define a sensor with 2000Hz sampling rate and 1ms delay
     t1 = Thread(target=sensor1.run)
     t1.daemon = True
 
-    # Launch the second sensor if we want to separate the sensor feeds
-    # sensor2 = Sensor(
-    #     "127.0.0.1", 10000, 100, 0.003, True
-    # )  # Define a sensor with 100Hz sampling rate and 3ms delay
-    # t2 = Thread(target=sensor2.run)
-    # t2.daemon = True
+    # Launch the second 3DOF sensor for the sensor server node
+    sensor2 = Sensor(
+        "127.0.0.1", 10000, 2000, 0.003
+    )  # Define a sensor with 2000Hz sampling rate and 3ms delay
+    t2 = Thread(target=sensor2.run)
+    t2.daemon = True
 
     t1.start()
-    # t2.start()
-
-    rclpy.spin(sensor1.server_node)  # change to sensor2.server_node if we use the second sensor
-
-    while True:
-        pass
+    t2.start()
+    rclpy.init()
+    sensor_server = SensorServer()
+    rclpy.spin(sensor_server)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-from robot_sensor_interfaces.srv import ArmJointState
+from robot_sensor_interfaces.srv import SensorData
 import rclpy
 from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
@@ -17,11 +17,9 @@ class SensorClient(Node):
         timer1_cb_group = MutuallyExclusiveCallbackGroup()
 
         # Create the clients and wait for service to come online
-        self.cli = self.create_client(
-            ArmJointState, "get_sensor_data", callback_group=client_cb_group
-        )
+        self.cli = self.create_client(SensorData, "get_sensor_data", callback_group=client_cb_group)
         self.cli_continuous = self.create_client(
-            ArmJointState, "sensor_data_continuous", callback_group=client_cb_group_continuous
+            SensorData, "sensor_data_continuous", callback_group=client_cb_group_continuous
         )
         while not self.cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info("discrete sensor service not available, waiting again...")
@@ -64,7 +62,7 @@ class SensorClient(Node):
 
     def pub_callback(self):
         msg = Float64MultiArray()
-        req = ArmJointState.Request()
+        req = SensorData.Request()
         req.num_samples = 10
         # Call the custom service sensor first
         result_discrete = self.cli.call(req)

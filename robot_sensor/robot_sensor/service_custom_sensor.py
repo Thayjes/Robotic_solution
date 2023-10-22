@@ -4,13 +4,13 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 
-from robot_sensor_interfaces.srv import ArmJointState
+from robot_sensor_interfaces.srv import SensorData
 
 
 class CustomSensorService(Node):
     def __init__(self) -> None:
         super().__init__("custom_sensor_service")
-        self.srv = self.create_service(ArmJointState, "get_sensor_data", self.sensor_callback)
+        self.srv = self.create_service(SensorData, "get_sensor_data", self.sensor_callback)
         self.DOF = 3
         # Create a TCP/IP socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -35,7 +35,9 @@ class CustomSensorService(Node):
         byte_data = self.sock.recv(10000)
         data = np.frombuffer(byte_data)
         response.joint_state.data = [float(elem) for elem in data]
-        self.get_logger().info("Incoming request\nnum_samples: %d" % (request.num_samples))
+        self.get_logger().info(
+            "Incoming request custom service \nnum_samples: %d" % (request.num_samples)
+        )
         return response
 
 
