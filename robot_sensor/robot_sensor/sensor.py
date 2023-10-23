@@ -10,6 +10,8 @@ import time
 from rclpy.node import Node
 import rclpy
 from robot_sensor_interfaces.srv import SensorData
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 
 
 class Sensor(Thread):
@@ -97,11 +99,14 @@ class Sensor(Thread):
 
 
 class SensorServer(Node):
-    def __init__(self) -> None:
+    def __init__(self, num_samples) -> None:
         super().__init__("sensor_server")
-        self.srv = self.create_service(SensorData, "sensor_data_continuous", self.service_cb)
+        srv_cb_group = MutuallyExclusiveCallbackGroup()
+        self.srv = self.create_service(
+            SensorData, "sensor_data_continuous", self.service_cb, callback_group=srv_cb_group
+        )
         self.DOF = 3
-        self.num_samples = 10
+        self.num_samples = num_samples
         # Create a TCP/IP socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -113,8 +118,12 @@ class SensorServer(Node):
 
         timer_freq = 100  # Hz
         timer_period = 1 / timer_freq  # seconds
-        self.pub = self.create_timer(timer_period, self.sensor_callback)
+        timer1_cb_group = MutuallyExclusiveCallbackGroup()
+        self.pub = self.create_timer(
+            timer_period, self.sensor_callback, callback_group=timer1_cb_group
+        )
         self.data = np.zeros(self.DOF)
+        self.num_calls = 0
 
     def service_cb(self, request, response):
         response.joint_state.data = [float(elem) for elem in self.data]
@@ -128,6 +137,7 @@ class SensorServer(Node):
         self.sock.sendall(message)
         byte_data = self.sock.recv(10000)
         self.data = np.frombuffer(byte_data)
+        self.num_calls += 1
 
 
 def main(args=None):
@@ -140,16 +150,18 @@ def main(args=None):
 
     # Launch the second 3DOF sensor for the sensor server node
     sensor2 = Sensor(
-        "127.0.0.1", 10000, 2000, 0.003
-    )  # Define a sensor with 2000Hz sampling rate and 3ms delay
+        "127.0.0.1", 10000, 2000, 0.001
+    )  # Define a sensor with 2000Hz sampling rate and 1ms delay
     t2 = Thread(target=sensor2.run)
     t2.daemon = True
 
     t1.start()
     t2.start()
     rclpy.init()
-    sensor_server = SensorServer()
-    rclpy.spin(sensor_server)
+    sensor_server = SensorServer(num_samples=100)
+    executor = MultiThreadedExecutor()
+    executor.add_node(sensor_server)
+    executor.spin()
 
 
 if __name__ == "__main__":

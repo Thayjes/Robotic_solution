@@ -9,7 +9,7 @@ from rclpy.qos import QoSProfile
 
 
 class SensorClient(Node):
-    def __init__(self):
+    def __init__(self, num_samples_custom, num_samples_latest):
         super().__init__("sensor_client")
         # Create the callback groups for service clients and timers
         client_cb_group = MutuallyExclusiveCallbackGroup()
@@ -44,6 +44,9 @@ class SensorClient(Node):
         )
 
         self.DOF = 3
+        self.num_samples_custom = num_samples_custom
+        self.num_samples_latest = num_samples_latest
+        self.num_calls = 0
 
     def format_msg_data(self, msg, num_samples):
         # This is almost always zero there is no empty padding at the start of your data
@@ -63,7 +66,7 @@ class SensorClient(Node):
     def pub_callback(self):
         msg = Float64MultiArray()
         req = SensorData.Request()
-        req.num_samples = 10
+        req.num_samples = self.num_samples_custom
         # Call the custom service sensor first
         result_discrete = self.cli.call(req)
         msg.data = result_discrete.joint_state.data
@@ -72,13 +75,14 @@ class SensorClient(Node):
         # Then call the service with latest sensor feed
         result_continuous = self.cli_continuous.call(req)
         msg.data = result_continuous.joint_state.data
-        msg = self.format_msg_data(msg=msg, num_samples=1)
+        msg = self.format_msg_data(msg=msg, num_samples=self.num_samples_latest)
         self.sensor_pub_continuous.publish(msg)
+        self.num_calls += 1
 
 
 def main(args=None):
     rclpy.init()
-    sensor_client = SensorClient()
+    sensor_client = SensorClient(num_samples_custom=1, num_samples_latest=100)
     executor = MultiThreadedExecutor()
     executor.add_node(sensor_client)
     try:
