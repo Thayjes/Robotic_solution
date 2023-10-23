@@ -30,9 +30,14 @@ Here are some considerations to help determine a suitable number of samples:
 
 * Time Delay: The delay introduced by the sensor should also be factored in.
   To account for this delay and provide real-time control, we should sample at a rate that ensures we receive new data before the control algorithm operates.
+  If we want our control loop to operate at 500Hz, this only allows a delay of 1 ms for each sensor request.
   If we want 50 samples per loop, the time delay is 25 ms (to sample) + 1-3 ms, if this is an important factor we can further reduce the number of samples.
+  So for a delay of 2 ms in total, we can only afford 1-2 samples for the custom service call.
+  For the sensor server service call, there should be no delay as it is simply returning the latest data. So we should be able
+  to increase the number of samples as needed for that call. I selected a number of samples of 100.
 
-  Based on the above criteria we can select a number of samples of 10-50 and experiment from there.
+  Based on the above criteria and depending on the system constraints we can set number of samples around 1-2 for the first service call.
+  And 50-100 for the second service call.
 
 ### Note on the Sensor Client Implementation
 
