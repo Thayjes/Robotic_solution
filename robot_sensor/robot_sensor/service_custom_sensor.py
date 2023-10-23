@@ -45,6 +45,7 @@ def main(args=None):
     rclpy.init(args=args)
     sensor_service = CustomSensorService()
     rclpy.spin(sensor_service)
+    sensor_service.sock.close()
     rclpy.shutdown()
 
 

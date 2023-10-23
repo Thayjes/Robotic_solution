@@ -162,6 +162,9 @@ def main(args=None):
     executor = MultiThreadedExecutor()
     executor.add_node(sensor_server)
     executor.spin()
+    sensor_server.sock.close()
+    sensor_server.destroy_node()
+    rclpy.shutdown()
 
 
 if __name__ == "__main__":
