@@ -44,6 +44,11 @@ in the timer callback (publishing it) this use case requires a synchronous clien
 I decided to proceed with this using different callback groups and multi threaded executor to ensure no deadlocks between the timer callback
 and synchronous client calls.
 
+| Asynchronous      | Synchronous |
+| ----------- | ----------- |
+| Guarantees no deadlock      | Deadlock can occur if not handled properly       |
+| Cannot publish immediately   | Can immediately publish |
+
 ### Running the Code
 
 Clone the repository and navigate to the root of the ```Robotic_solution``` directory
