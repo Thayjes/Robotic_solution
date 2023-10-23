@@ -57,7 +57,7 @@ Run ```colcon build``` to build the two packages.
 
 In the first terminal run ```python3 robot_sensor/robot_sensor/sensor.py``` this will startup the two sensors and the sensor server node.
 
-In the second terminal run ```ros2 run robot_sensor custom_service_sensor``` this will startup the custom service node.
+In the second terminal run ```ros2 run robot_sensor custom_service``` this will startup the custom service node.
 
 Finally startup the client to start sending requests by running ```ros2 run robot_sensor sensor_client```
 
